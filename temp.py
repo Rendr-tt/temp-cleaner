@@ -1,59 +1,61 @@
-import ctypes
+import os
 import shutil
-import glob
-from pathlib import Path
+import ctypes
 from tqdm import tqdm
+from pathlib import Path
 
-def has_admin_rights() -> bool:
-    """Return True if running as Administrator."""
+def is_admin():
+    """Check if the script is running as admin"""
     try:
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
         return False
 
-def purge_directory(target_path: Path, label: str):
-    """Remove all files and folders inside a given path."""
-    if not target_path.exists():
-        print(f"[{label}] ❌ Directory not found: {target_path}")
+def clean_folder(path, name):
+    """Delete everything inside the given folder"""
+    p = Path(path)
+    if not p.exists():
+        print(f"{name}: folder not found")
+        return
+    
+    items = list(p.iterdir())
+    if not items:
+        print(f"{name}: already empty")
         return
 
-    all_items = list(target_path.glob('*'))
-    if not all_items:
-        print(f"[{label}] ✅ Already clean.")
-        return
+    print(f"Cleaning {name}...")
 
-    print(f"[{label}] Cleaning {len(all_items)} items...")
-
-    with tqdm(total=len(all_items), desc=f"{label}", unit="item") as bar:
-        for item in all_items:
+    with tqdm(total=len(items), desc=name, unit="item") as bar:
+        for item in items:
             try:
                 if item.is_file() or item.is_symlink():
-                    item.unlink(missing_ok=True)
+                    item.unlink()
                 elif item.is_dir():
                     shutil.rmtree(item, ignore_errors=True)
-            except Exception:
-                # Silently skip problematic items
+            except Exception as e:
+                # ignoring errors silently
                 pass
-            finally:
-                bar.update(1)
+            bar.update(1)
 
 def main():
-    root_dir = Path.home().drive  # Usually 'C:\\'
-    system_temp = Path(Path().joinpath(root_dir, "Windows", "Temp"))
-    user_temp = Path(Path().joinpath(Path.home(), "AppData", "Local", "Temp"))
-    prefetch_dir = Path(Path().joinpath(root_dir, "Windows", "Prefetch"))
+    sys_root = os.getenv("SystemRoot", "C:\\Windows")
+    temp_path = os.path.join(sys_root, "Temp")
+    user_temp = os.getenv("TEMP")
+    prefetch_path = os.path.join(sys_root, "Prefetch")
 
-    print("\n🧹 Starting cleanup...\n")
+    print("\n--- Temp Cleaner ---\n")
 
-    purge_directory(system_temp, "System Temp")
-    purge_directory(user_temp, "User Temp")
+    clean_folder(temp_path, "System Temp")
+    clean_folder(user_temp, "User Temp")
 
-    if has_admin_rights():
-        purge_directory(prefetch_dir, "Prefetch")
+    if is_admin():
+        clean_folder(prefetch_path, "Prefetch")
     else:
-        print("[Prefetch] ⚠️ Skipped — requires administrator privileges.\n")
+        print("Prefetch skipped (need admin rights).")
 
-    input("\nCleanup finished. Press Enter to close...")
+    input("\nDone. Press Enter to close...")
 
 if __name__ == "__main__":
     main()
+
+
