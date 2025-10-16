@@ -1,6 +1,6 @@
 # temp-cleaner
 
-PY script that cleans up your temp files if found
+PY script that cleans up your temp files and prefetch ones if found
 
 
 USAGE:
